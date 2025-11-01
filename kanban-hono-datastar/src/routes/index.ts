@@ -1,0 +1,250 @@
+import { Hono, type Context } from "hono";
+import { serveStatic } from "hono/bun";
+import { IndexPage } from "../components/index";
+import { BoardPage, BoardCardsSection } from "../components/board";
+import { sseRedirect, ssePatch } from "../lib/datastar";
+import { renderToString } from "hono/jsx/dom/server";
+import {
+  getBoards,
+  getBoard,
+  getUsers,
+  getTags,
+  createBoard as dbCreateBoard,
+  createCard as dbCreateCard,
+  updateCard as dbUpdateCard,
+  deleteCard as dbDeleteCard,
+  addComment as dbAddComment,
+  moveCard as dbMoveCard,
+  reorderCards as dbReorderCards,
+} from "../db/api";
+import { streamSSE } from "hono/streaming";
+
+const app = new Hono();
+
+app.get("/static/*", async (c) => {
+  const path = c.req.path.replace("/static/", "");
+  const filePath = `./static/${path}`;
+  const file = Bun.file(filePath);
+
+  if (await file.exists()) {
+    // Get the proper content type
+    const ext = path.split(".").pop();
+    const contentTypes: Record<string, string> = {
+      css: "text/css",
+      js: "application/javascript",
+      png: "image/png",
+      jpg: "image/jpeg",
+      svg: "image/svg+xml",
+      woff: "font/woff",
+      woff2: "font/woff2",
+    };
+
+    return new Response(file, {
+      headers: {
+        "Content-Type": contentTypes[ext || ""] || "application/octet-stream",
+      },
+    });
+  }
+
+  return c.notFound();
+});
+
+// Hot reload endpoint for development
+app.get("/hotreload", (c) => {
+  return streamSSE(c, async (stream) => {
+    await stream.writeSSE({
+      event: "datastar-patch-elements",
+      data: `selector body\nmode append\nelements <script>window.location.reload()</script>`,
+    });
+  });
+});
+
+app.get("/", async (c) => {
+  const boards = await getBoards();
+  const html = renderToString(IndexPage({ boards }));
+  return c.html(html);
+});
+
+app.post("/board", async (c) => {
+  const formData = await c.req.formData();
+  const title = (formData.get("title") as string).trim();
+  const description = (formData.get("description") as string)?.trim() || "";
+
+  const board = await dbCreateBoard({ title, description });
+
+  return streamSSE(c, async (stream) => {
+    await stream.writeSSE(sseRedirect(`/board/${board.id}`));
+  });
+});
+
+app.get("/board/:boardId", async (c) => {
+  const boardId = c.req.param("boardId");
+  const board = await getBoard(boardId);
+
+  if (!board) {
+    return c.notFound();
+  }
+
+  const users = await getUsers();
+  const tags = await getTags();
+
+  const html = renderToString(BoardPage({ board, users, tags }));
+  return c.html(html);
+});
+
+app.post("/board/:boardId/card", async (c) => {
+  const boardId = c.req.param("boardId");
+  const board = await getBoard(boardId);
+
+  if (!board) {
+    return c.notFound();
+  }
+
+  const formData = await c.req.formData();
+
+  const title = (formData.get("title") as string).trim();
+  const description = (formData.get("description") as string)?.trim() || null;
+  const assigneeId = (formData.get("assigneeId") as string)?.trim() || null;
+  const tagIds = formData.getAll("tagIds") as string[];
+
+  await dbCreateCard({
+    boardId,
+    title,
+    description,
+    assigneeId,
+    tagIds,
+  });
+
+  const users = await getUsers();
+  const html = renderToString(BoardCardsSection({ board, users }));
+
+  return streamSSE(c, async (stream) => {
+    await stream.writeSSE(ssePatch("#boardCardsSection", html));
+  });
+});
+
+app.post("/board/:boardId/card/:cardId", async (c) => {
+  const boardId = c.req.param("boardId");
+  const cardId = c.req.param("cardId");
+  const board = await getBoard(boardId);
+
+  if (!board) {
+    return c.notFound();
+  }
+
+  const formData = await c.req.formData();
+
+  const title = (formData.get("title") as string).trim();
+  const description = (formData.get("description") as string)?.trim() || null;
+  const assigneeId = (formData.get("assigneeId") as string)?.trim() || null;
+  const tagIds = formData.getAll("tagIds") as string[];
+
+  await dbUpdateCard({
+    cardId,
+    title,
+    description,
+    assigneeId,
+    tagIds,
+  });
+
+  const users = await getUsers();
+  const html = renderToString(BoardCardsSection({ board, users }));
+
+  return streamSSE(c, async (stream) => {
+    await stream.writeSSE(ssePatch("#boardCardsSection", html));
+  });
+});
+
+app.delete("/board/:boardId/card/:cardId", async (c) => {
+  const boardId = c.req.param("boardId");
+  const cardId = c.req.param("cardId");
+  const board = await getBoard(boardId);
+
+  if (!board) {
+    return c.notFound();
+  }
+
+  await dbDeleteCard(cardId);
+
+  const users = await getUsers();
+  const html = renderToString(BoardCardsSection({ board, users }));
+
+  return streamSSE(c, async (stream) => {
+    await stream.writeSSE(ssePatch("#boardCardsSection", html));
+  });
+});
+
+app.post("/board/:boardId/card/:cardId/comment", async (c) => {
+  const boardId = c.req.param("boardId");
+  const cardId = c.req.param("cardId");
+  const board = await getBoard(boardId);
+
+  if (!board) {
+    return c.notFound();
+  }
+
+  const formData = await c.req.formData();
+
+  const userId = (formData.get("userId") as string).trim();
+  const text = (formData.get("text") as string).trim();
+
+  await dbAddComment({
+    cardId,
+    userId,
+    text,
+  });
+
+  const users = await getUsers();
+  const html = renderToString(BoardCardsSection({ board, users }));
+
+  return streamSSE(c, async (stream) => {
+    await stream.writeSSE(ssePatch("#boardCardsSection", html));
+  });
+});
+
+app.put("/board/:boardId/card/:cardId/list", async (c) => {
+  const boardId = c.req.param("boardId");
+  const cardId = c.req.param("cardId");
+  const board = await getBoard(boardId);
+
+  if (!board) {
+    return c.notFound();
+  }
+
+  const formData = await c.req.formData();
+
+  const listId = (formData.get("listId") as string).trim();
+
+  await dbMoveCard(cardId, listId);
+
+  const users = await getUsers();
+  const html = renderToString(BoardCardsSection({ board, users }));
+
+  return streamSSE(c, async (stream) => {
+    await stream.writeSSE(ssePatch("#boardCardsSection", html));
+  });
+});
+
+app.put("/board/:boardId/list/:listId/positions", async (c) => {
+  const boardId = c.req.param("boardId");
+  const board = await getBoard(boardId);
+
+  if (!board) {
+    return c.notFound();
+  }
+
+  const formData = await c.req.formData();
+
+  const cardIds = formData.getAll("cardIds") as string[];
+
+  await dbReorderCards(cardIds);
+
+  const users = await getUsers();
+  const html = renderToString(BoardCardsSection({ board, users }));
+
+  return streamSSE(c, async (stream) => {
+    await stream.writeSSE(ssePatch("#boardCardsSection", html));
+  });
+});
+
+export default app;
