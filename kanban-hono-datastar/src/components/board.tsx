@@ -56,18 +56,7 @@ function Board({
                   </li>
                 </ul>
               </div>
-              <div class="space-y-8">
-                <BoardOverview board={board} />
-                <div class="card-actions">
-                  <button
-                    class="btn btn-primary"
-                    onclick="addCardModal.showModal()"
-                  >
-                    Add Card
-                  </button>
-                </div>
-                <BoardCardsSection board={board} users={users} />
-              </div>
+              <BoardContent board={board} users={users} />
               <AddCardModal boardId={board.id} users={users} tags={tags} />
               <EditCardModal boardId={board.id} users={users} tags={tags} />
               <AddCommentModal boardId={board.id} users={users} />
@@ -107,6 +96,26 @@ function BoardOverview({ board }: { board: BoardDetails }) {
         />
       </div>
     </section>
+  );
+}
+
+export function BoardContent({
+  board,
+  users,
+}: {
+  board: BoardDetails;
+  users: User[];
+}) {
+  return (
+    <div id="boardContent" class="space-y-8">
+      <BoardOverview board={board} />
+      <div class="card-actions">
+        <button class="btn btn-primary" onclick="addCardModal.showModal()">
+          Add Card
+        </button>
+      </div>
+      <BoardCardsSection board={board} users={users} />
+    </div>
   );
 }
 

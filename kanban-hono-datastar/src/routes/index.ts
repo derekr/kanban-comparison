@@ -1,7 +1,7 @@
 import { Hono, type Context } from "hono";
 import { serveStatic } from "hono/bun";
 import { IndexPage } from "../components/index";
-import { BoardPage, BoardCardsSection } from "../components/board";
+import { BoardPage, BoardContent } from "../components/board";
 import { sseRedirect, ssePatch } from "../lib/datastar";
 import { renderToString } from "hono/jsx/dom/server";
 import {
@@ -118,12 +118,10 @@ app.post("/board/:boardId/card", async (c) => {
   // Re-fetch board to get the newly created card
   const updatedBoard = (await getBoard(boardId))!;
   const users = await getUsers();
-  const html = renderToString(
-    BoardCardsSection({ board: updatedBoard, users }),
-  );
+  const html = renderToString(BoardContent({ board: updatedBoard, users }));
 
   return streamSSE(c, async (stream) => {
-    await stream.writeSSE(ssePatch("#boardCardsSection", html));
+    await stream.writeSSE(ssePatch("#boardContent", html));
   });
 });
 
@@ -154,12 +152,10 @@ app.post("/board/:boardId/card/:cardId", async (c) => {
   // Re-fetch board to get the updated card
   const updatedBoard = (await getBoard(boardId))!;
   const users = await getUsers();
-  const html = renderToString(
-    BoardCardsSection({ board: updatedBoard, users }),
-  );
+  const html = renderToString(BoardContent({ board: updatedBoard, users }));
 
   return streamSSE(c, async (stream) => {
-    await stream.writeSSE(ssePatch("#boardCardsSection", html));
+    await stream.writeSSE(ssePatch("#boardContent", html));
   });
 });
 
@@ -177,12 +173,10 @@ app.delete("/board/:boardId/card/:cardId", async (c) => {
   // Re-fetch board to get the updated state (card removed)
   const updatedBoard = (await getBoard(boardId))!;
   const users = await getUsers();
-  const html = renderToString(
-    BoardCardsSection({ board: updatedBoard, users }),
-  );
+  const html = renderToString(BoardContent({ board: updatedBoard, users }));
 
   return streamSSE(c, async (stream) => {
-    await stream.writeSSE(ssePatch("#boardCardsSection", html));
+    await stream.writeSSE(ssePatch("#boardContent", html));
   });
 });
 
@@ -209,12 +203,10 @@ app.post("/board/:boardId/card/:cardId/comment", async (c) => {
   // Re-fetch board to get the new comment
   const updatedBoard = (await getBoard(boardId))!;
   const users = await getUsers();
-  const html = renderToString(
-    BoardCardsSection({ board: updatedBoard, users }),
-  );
+  const html = renderToString(BoardContent({ board: updatedBoard, users }));
 
   return streamSSE(c, async (stream) => {
-    await stream.writeSSE(ssePatch("#boardCardsSection", html));
+    await stream.writeSSE(ssePatch("#boardContent", html));
   });
 });
 
@@ -233,11 +225,13 @@ app.put("/board/:boardId/card/:cardId/list", async (c) => {
 
   await dbMoveCard(cardId, listId);
 
+  // Re-fetch board to get the updated card position
+  const updatedBoard = (await getBoard(boardId))!;
   const users = await getUsers();
-  const html = renderToString(BoardCardsSection({ board, users }));
+  const html = renderToString(BoardContent({ board: updatedBoard, users }));
 
   return streamSSE(c, async (stream) => {
-    await stream.writeSSE(ssePatch("#boardCardsSection", html));
+    await stream.writeSSE(ssePatch("#boardContent", html));
   });
 });
 
@@ -255,11 +249,13 @@ app.put("/board/:boardId/list/:listId/positions", async (c) => {
 
   await dbReorderCards(cardIds);
 
+  // Re-fetch board to get the updated card order
+  const updatedBoard = (await getBoard(boardId))!;
   const users = await getUsers();
-  const html = renderToString(BoardCardsSection({ board, users }));
+  const html = renderToString(BoardContent({ board: updatedBoard, users }));
 
   return streamSSE(c, async (stream) => {
-    await stream.writeSSE(ssePatch("#boardCardsSection", html));
+    await stream.writeSSE(ssePatch("#boardContent", html));
   });
 });
 
