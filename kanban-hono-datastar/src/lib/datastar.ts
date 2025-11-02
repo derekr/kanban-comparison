@@ -13,9 +13,10 @@ export function sseFragment(selector: string, html: string) {
 }
 
 export function ssePatch(selector: string, html: string) {
+  const escaped = html.replace(/\n/g, " ").replace(/\r/g, "");
   return {
     event: "datastar-patch-elements",
-    data: `selector ${selector}\nmerge morph\nelements ${html}`,
+    data: `mode outer\nselector ${selector}\nelements ${escaped}`,
   };
 }
 

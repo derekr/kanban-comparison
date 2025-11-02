@@ -115,8 +115,12 @@ app.post("/board/:boardId/card", async (c) => {
     tagIds,
   });
 
+  // Re-fetch board to get the newly created card
+  const updatedBoard = (await getBoard(boardId))!;
   const users = await getUsers();
-  const html = renderToString(BoardCardsSection({ board, users }));
+  const html = renderToString(
+    BoardCardsSection({ board: updatedBoard, users }),
+  );
 
   return streamSSE(c, async (stream) => {
     await stream.writeSSE(ssePatch("#boardCardsSection", html));
@@ -147,8 +151,12 @@ app.post("/board/:boardId/card/:cardId", async (c) => {
     tagIds,
   });
 
+  // Re-fetch board to get the updated card
+  const updatedBoard = (await getBoard(boardId))!;
   const users = await getUsers();
-  const html = renderToString(BoardCardsSection({ board, users }));
+  const html = renderToString(
+    BoardCardsSection({ board: updatedBoard, users }),
+  );
 
   return streamSSE(c, async (stream) => {
     await stream.writeSSE(ssePatch("#boardCardsSection", html));
@@ -166,8 +174,12 @@ app.delete("/board/:boardId/card/:cardId", async (c) => {
 
   await dbDeleteCard(cardId);
 
+  // Re-fetch board to get the updated state (card removed)
+  const updatedBoard = (await getBoard(boardId))!;
   const users = await getUsers();
-  const html = renderToString(BoardCardsSection({ board, users }));
+  const html = renderToString(
+    BoardCardsSection({ board: updatedBoard, users }),
+  );
 
   return streamSSE(c, async (stream) => {
     await stream.writeSSE(ssePatch("#boardCardsSection", html));
@@ -194,8 +206,12 @@ app.post("/board/:boardId/card/:cardId/comment", async (c) => {
     text,
   });
 
+  // Re-fetch board to get the new comment
+  const updatedBoard = (await getBoard(boardId))!;
   const users = await getUsers();
-  const html = renderToString(BoardCardsSection({ board, users }));
+  const html = renderToString(
+    BoardCardsSection({ board: updatedBoard, users }),
+  );
 
   return streamSSE(c, async (stream) => {
     await stream.writeSSE(ssePatch("#boardCardsSection", html));
