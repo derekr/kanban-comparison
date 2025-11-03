@@ -261,7 +261,7 @@ export async function createCard(data: {
   const cardId = crypto.randomUUID();
 
   // Use a transaction to create card and tags atomically
-  db.transaction((tx) => {
+  await db.transaction((tx) => {
     tx.insert(cards)
       .values({
         id: cardId,
@@ -298,7 +298,7 @@ export async function updateCard(data: {
   tagIds: string[];
 }) {
   // Use a transaction to update card and tags atomically
-  db.transaction((tx) => {
+  await db.transaction((tx) => {
     // Update card basic fields
     tx.update(cards)
       .set({
@@ -345,7 +345,7 @@ export async function addComment(data: {
 export async function updateCardPositions(
   updates: Array<{ cardId: string; listId: string; position: number }>,
 ) {
-  db.transaction((tx) => {
+  await db.transaction((tx) => {
     for (const update of updates) {
       tx.update(cards)
         .set({ listId: update.listId, position: update.position })
@@ -356,7 +356,7 @@ export async function updateCardPositions(
 }
 
 export async function reorderCards(cardIds: string[]) {
-  db.transaction((tx) => {
+  await db.transaction((tx) => {
     cardIds.forEach((cardId, index) => {
       tx.update(cards)
         .set({ position: index })

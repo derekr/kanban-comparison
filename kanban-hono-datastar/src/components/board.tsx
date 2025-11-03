@@ -1,6 +1,6 @@
 import { BasePage } from "./layout";
 import { BarChart, PieChart, type ChartData } from "./charts";
-import { CardList, DropScript } from "./cards";
+import { CardList } from "./cards";
 import { AddCardModal, EditCardModal, AddCommentModal } from "./modals";
 import type { BoardDetails, User, TagItem } from "../db/api";
 
@@ -29,7 +29,7 @@ export function BoardPage({
   );
 }
 
-function Board({
+export function Board({
   board,
   users,
   tags,
@@ -39,33 +39,28 @@ function Board({
   tags: TagItem[];
 }) {
   return (
-    <>
-      <div style="display: contents">
-        <div class="min-h-screen bg-base-200">
-          <div class="min-h-screen bg-base-300 text-base-content p-4 md:p-8">
-            <main class="w-full p-8 space-y-10 rounded-[2.5rem] bg-base-100 dark:bg-base-200 shadow-xl">
-              <div class="breadcrumbs text-sm">
-                <ul>
-                  <li>
-                    <a href="/" class="link link-hover">
-                      Boards
-                    </a>
-                  </li>
-                  <li>
-                    <span class="text-base-content/60">{board.title}</span>
-                  </li>
-                </ul>
-              </div>
-              <BoardContent board={board} users={users} />
-              <AddCardModal boardId={board.id} users={users} tags={tags} />
-              <EditCardModal boardId={board.id} users={users} tags={tags} />
-              <AddCommentModal boardId={board.id} users={users} />
-            </main>
+    <div id="board-app" class="min-h-screen bg-base-200">
+      <div class="min-h-screen bg-base-300 text-base-content p-4 md:p-8">
+        <main class="w-full p-8 space-y-10 rounded-[2.5rem] bg-base-100 dark:bg-base-200 shadow-xl">
+          <div class="breadcrumbs text-sm">
+            <ul>
+              <li>
+                <a href="/" class="link link-hover">
+                  Boards
+                </a>
+              </li>
+              <li>
+                <span class="text-base-content/60">{board.title}</span>
+              </li>
+            </ul>
           </div>
-        </div>
+          <BoardContent board={board} users={users} />
+          <AddCardModal boardId={board.id} users={users} tags={tags} />
+          <EditCardModal boardId={board.id} users={users} tags={tags} />
+          <AddCommentModal boardId={board.id} users={users} />
+        </main>
       </div>
-      <DropScript />
-    </>
+    </div>
   );
 }
 

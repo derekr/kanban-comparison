@@ -9,9 +9,11 @@ export function CardList({
   boardId: string;
   users: User[];
 }) {
+  const dropHandler = `evt.preventDefault(); evt.currentTarget.classList.remove('ring-4', 'ring-primary', 'ring-offset-2', 'bg-primary/5', 'scale-[1.02]'); const cardId = evt.dataTransfer.getData('cardId'); const sourceListId = evt.dataTransfer.getData('listId'); $listId = '${list.id}'; const dropY = evt.clientY; const cardsInList = evt.currentTarget.querySelectorAll('[role="listitem"]'); let insertPosition = cardsInList.length; for (let i = 0; i < cardsInList.length; i++) { const rect = cardsInList[i].getBoundingClientRect(); const cardMiddle = rect.top + rect.height / 2; if (dropY < cardMiddle) { insertPosition = i; break; } } const allCardIds = Array.from(cardsInList).filter(card => card.dataset.cardId !== cardId).map(card => card.dataset.cardId); allCardIds.splice(insertPosition, 0, cardId); $cardIds = allCardIds; @put('/board/` + boardId + `/card/' + cardId + '/position')`;
+
   return (
     <article class="card bg-base-200 dark:bg-base-300 min-w-[20rem] shadow-xl">
-      <div class="card-body gap-4">
+      <div class="card-body gap-4" data-signals="{listId: '', cardIds: []}">
         <header class="flex items-center justify-between">
           <h2 class="card-title text-base-content">{list.title}</h2>
           <div class="badge badge-primary badge-outline badge-lg shadow">
@@ -23,7 +25,7 @@ export function CardList({
           data-list-id={list.id}
           data-on:dragover="evt.preventDefault(); evt.currentTarget.classList.add('ring-4', 'ring-primary', 'cursor-grabbing', 'ring-offset-2', 'bg-primary/5', 'scale-[1.02]')"
           data-on:dragleave="evt.currentTarget.classList.remove('ring-4', 'ring-primary', 'ring-offset-2', 'bg-primary/5', 'scale-[1.02]')"
-          data-on:drop={`drop(evt, '${boardId}', '${list.id}'); @get('/board/${boardId}')`}
+          data-on:drop={dropHandler}
         >
           {list.cards.length === 0 ? (
             <div class="empty-placeholder alert alert-info text-sm">
@@ -54,6 +56,7 @@ export function Card({
       class="card bg-base-100 dark:bg-neutral shadow-lg transition-all duration-300 ease-in-out cursor-grab active:cursor-grabbing"
       id={card.id}
       data-card-id={card.id}
+      role="listitem"
       draggable="true"
       data-on:dragstart={`evt.dataTransfer.effectAllowed = 'move'; evt.dataTransfer.setData('cardId', '${card.id}'); evt.dataTransfer.setData('listId', '${listId}'); evt.target.classList.add('opacity-50')`}
       data-on:dragend="evt.target.classList.remove('opacity-50')"
@@ -124,62 +127,6 @@ export function Card({
         </div>
       </div>
     </article>
-  );
-}
-
-export function DropScript() {
-  return (
-    <script
-      dangerouslySetInnerHTML={{
-        __html: `
-      async function drop(evt, boardId, listId) {
-        evt.preventDefault();
-        evt.currentTarget.classList.remove('ring-4', 'ring-primary', 'ring-offset-2', 'bg-primary/5', 'scale-[1.02]');
-        const cardId = evt.dataTransfer.getData('cardId');
-        const sourceListId = evt.dataTransfer.getData('listId');
-        const targetListId = listId;
-
-        // Calculate drop position
-        const dropY = evt.clientY;
-        const cardsInList = evt.currentTarget.querySelectorAll('[data-card-id]');
-        let insertPosition = cardsInList.length;
-
-        for (let i = 0; i < cardsInList.length; i++) {
-          const rect = cardsInList[i].getBoundingClientRect();
-          const cardMiddle = rect.top + rect.height / 2;
-          if (dropY < cardMiddle) {
-            insertPosition = i;
-            break;
-          }
-        }
-
-        // Update card list if changed
-        if (sourceListId !== targetListId) {
-          fetch(\`/board/\${boardId}/card/\${cardId}/list\`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-            body: 'listId=' + targetListId
-          });
-        }
-
-        // Collect all card IDs in new order
-        const allCardIds = Array.from(cardsInList)
-          .filter(card => card.dataset.cardId !== cardId)
-          .map(card => card.dataset.cardId);
-        allCardIds.splice(insertPosition, 0, cardId);
-
-        // Update positions
-        const params = new URLSearchParams();
-        allCardIds.forEach(id => params.append('cardIds', id));
-        await fetch(\`/board/\${boardId}/list/\${listId}/positions\`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-          body: params.toString()
-        });
-      }
-    `,
-      }}
-    />
   );
 }
 
